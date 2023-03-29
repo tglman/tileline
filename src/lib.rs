@@ -4,7 +4,7 @@ use quick_xml::events::{BytesDecl, BytesText, Event};
 use quick_xml::{Error, Writer};
 use std::{io::Write, sync::Mutex};
 
-#[derive(Builder)]
+#[derive(Builder, Clone)]
 pub struct Config {
     #[default(0)]
     offset_x: u32,
@@ -61,8 +61,56 @@ pub trait Element {
     fn get_link(&self) -> Option<Box<dyn ElementLink>>;
 }
 pub trait ElementLink {
-   fn link(&self) ->String; 
-   fn title(&self) ->String; 
+    fn link(&self) -> String;
+    fn title(&self) -> String;
+}
+
+pub trait Info {
+    fn block_count(&self) -> u32;
+    fn label(&self) -> &str;
+}
+
+pub trait Metadata<IT, IF>
+where
+    IT: Iterator<Item = IF>,
+    IF: Info,
+{
+    fn left_size(&self) -> u32;
+    fn top_size(&self) -> u32;
+    fn right_size(&self) -> u32;
+    fn bottom_size(&self) -> u32;
+    fn left(&self) -> Option<IT>;
+    fn top(&self) -> Option<IT>;
+    fn right(&self) -> Option<IT>;
+    fn bottom(&self) -> Option<IT>;
+}
+
+pub fn metadata_tile<D, B, E, W, M, MIT, MIN>(
+    config: Config,
+    metadata: M,
+    data_source: D,
+    output: W,
+) -> std::result::Result<(), Box<dyn std::error::Error>>
+where
+    D: Iterator<Item = B>,
+    B: Iterator<Item = E>,
+    E: Element,
+    W: Write,
+    M: Metadata<MIT, MIN>,
+    MIT: Iterator<Item = MIN>,
+    MIN: Info,
+{
+    let ds = Mutex::new(Some((config, data_source, metadata)));
+    base_doc(output, move |svg| {
+        let (mut config, data_source, metadata) = ds.lock().unwrap().take().unwrap();
+        let left_size = metadata.left_size();
+        let top_size = metadata.top_size();
+        write_metadata(svg, &config, metadata)?;
+        config.offset_x += left_size;
+        config.offset_y += top_size;
+        write_tile(svg, data_source, &config)
+    })?;
+    Ok(())
 }
 
 pub fn tile<D, B, E, W>(
@@ -76,6 +124,19 @@ where
     E: Element,
     W: Write,
 {
+    let ds = Mutex::new(Some(data_source));
+    base_doc(output, move |svg| {
+        let data_source = ds.lock().unwrap().take().unwrap();
+        write_tile(svg, data_source, &config)
+    })?;
+    Ok(())
+}
+
+fn base_doc<F, W>(output: W, f: F) -> std::result::Result<(), Box<dyn std::error::Error>>
+where
+    F: Fn(&mut Writer<W>) -> std::result::Result<(), Error>,
+    W: Write,
+{
     let mut svg = Writer::new(output);
     svg.write_event(Event::Decl(BytesDecl::new(
         "1.0",
@@ -84,9 +145,6 @@ where
     )))?;
     svg.write_event(Event::DocType(BytesText::from_escaped(r#"svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd""#)))?;
 
-    //    let width = 1000;
-    //    let height = 1000;
-    let ds = Mutex::new(Some(data_source));
     svg.create_element("svg")
         .with_attributes(vec![
             ("version", "1.1"),
@@ -94,30 +152,81 @@ where
             ("xmlns", "http://www.w3.org/2000/svg"),
             ("xmlns:xlink", "http://www.w3.org/1999/xlink"),
         ])
-        .write_inner_content(move |svg| {
-            let mut y = 0;
-            for yval in ds.lock().unwrap().take().unwrap() {
-                y += 1;
-                let mut x = 0;
-                for xval in yval {
-                    x += 1;
-                    if let Some(l) = xval.get_link() {
-                        svg.create_element("a")
-                            .with_attributes(vec![
-                                ("xlink:href", l.link().as_str()),
-                                ("xlink:title", l.title().as_str()),
-                            ])
-                            .write_inner_content(|svg|{
-                                write_rect(svg, &config, x, y, &xval)?;
-                                Ok(())
-                            })?;
-                    } else {
-                                write_rect(svg, &config, x, y, &xval)?;
-                    }
-                }
+        .write_inner_content(f)?;
+    Ok(())
+}
+
+fn write_metadata<W, M, MIT, MIN>(
+    svg: &mut Writer<W>,
+    config: &Config,
+    metadata: M,
+) -> std::result::Result<(), Error>
+where
+    M: Metadata<MIT, MIN>,
+    MIT: Iterator<Item = MIN>,
+    MIN: Info,
+    W: Write,
+{
+    let top_size = metadata.top_size();
+    let left_size = metadata.left_size();
+    if let Some(iter) = metadata.left() {
+        let mut y = 0;
+        let mut c = config.clone();
+        c.offset_y += top_size;
+        for info in iter {
+            let block = info.block_count() / 2;
+            y += block;
+            write_text(svg, &c, 1, y, info.label())?;
+            y += block;
+        }
+    }
+
+    if let Some(iter) = metadata.top() {
+        let mut x = 0;
+        let mut c = config.clone();
+        c.offset_x += left_size;
+        for info in iter {
+            let block = info.block_count();
+            write_text(svg, &c, x, 1, info.label())?;
+            x += block;
+        }
+    }
+
+    Ok(())
+}
+
+fn write_tile<W, D, B, E>(
+    svg: &mut Writer<W>,
+    data_source: D,
+    config: &Config,
+) -> std::result::Result<(), Error>
+where
+    D: Iterator<Item = B>,
+    B: Iterator<Item = E>,
+    E: Element,
+    W: Write,
+{
+    let mut y = 0;
+    for yval in data_source {
+        let mut x = 0;
+        for xval in yval {
+            if let Some(l) = xval.get_link() {
+                svg.create_element("a")
+                    .with_attributes(vec![
+                        ("xlink:href", l.link().as_str()),
+                        ("xlink:title", l.title().as_str()),
+                    ])
+                    .write_inner_content(|svg| {
+                        write_rect(svg, &config, x, y, &xval)?;
+                        Ok(())
+                    })?;
+            } else {
+                write_rect(svg, &config, x, y, &xval)?;
             }
-            Ok(())
-        })?;
+            x += 1;
+        }
+        y += 1;
+    }
     Ok(())
 }
 
@@ -146,5 +255,21 @@ fn write_rect<W: std::io::Write>(
             ("style", style.as_str()),
         ])
         .write_empty()?;
+    Ok(())
+}
+
+fn write_text<W: std::io::Write>(
+    svg: &mut Writer<W>,
+    config: &Config,
+    x: u32,
+    y: u32,
+    val: &str,
+) -> std::result::Result<(), Error> {
+    svg.create_element("text")
+        .with_attributes(vec![
+            ("x", config.pos_x(x).as_str()),
+            ("y", config.pos_y(y).as_str()),
+        ])
+        .write_text_content(BytesText::new(val))?;
     Ok(())
 }

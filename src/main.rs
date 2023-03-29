@@ -1,6 +1,7 @@
 use std::fs::OpenOptions;
-use tileline::{tile, Config, Element, Rgb, ElementLink};
+use tileline::{metadata_tile, tile, Config, Element, ElementLink, Info, Metadata, Rgb};
 
+#[derive(Clone)]
 struct Value {
     i: u16,
 }
@@ -17,16 +18,80 @@ impl Element for Value {
         Rgb::new(0.0, 0.0, 50.0, None)
     }
     fn get_link(&self) -> Option<Box<dyn ElementLink>> {
-        Some(Box::new(ElementLinkImpl("https://tglman.com".to_owned(), "Tglman.com".to_owned())))
+        Some(Box::new(ElementLinkImpl(
+            "https://tglman.com".to_owned(),
+            "Tglman.com".to_owned(),
+        )))
     }
 }
-struct ElementLinkImpl(String,String);
+struct ElementLinkImpl(String, String);
 impl ElementLink for ElementLinkImpl {
-    fn link(&self) ->String {
+    fn link(&self) -> String {
         self.0.clone()
     }
-    fn title(&self) ->String {
+    fn title(&self) -> String {
         self.1.clone()
+    }
+}
+
+#[derive(Default)]
+struct Meta {}
+
+impl Metadata<std::vec::IntoIter<MetaInfo>, MetaInfo> for Meta {
+    fn left_size(&self) -> u32 {
+        60
+    }
+
+    fn top_size(&self) -> u32 {
+        30
+    }
+
+    fn right_size(&self) -> u32 {
+        0
+    }
+
+    fn bottom_size(&self) -> u32 {
+        0
+    }
+
+    fn left(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
+        Some(
+            (0..2)
+                .into_iter()
+                .map(|_| MetaInfo::default())
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
+    }
+
+    fn top(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
+        Some(
+            (0..15)
+                .into_iter()
+                .map(|_| MetaInfo::default())
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
+    }
+
+    fn right(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
+        None
+    }
+
+    fn bottom(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
+        None
+    }
+}
+
+#[derive(Default)]
+struct MetaInfo {}
+impl Info for MetaInfo {
+    fn block_count(&self) -> u32 {
+        2
+    }
+
+    fn label(&self) -> &str {
+        "label"
     }
 }
 
@@ -47,5 +112,13 @@ fn main() {
         .create(true)
         .open("output.svg")
         .unwrap();
-    tile(config, val.into_iter(), f).unwrap();
+    tile(config.clone(), val.clone().into_iter(), f).unwrap();
+
+    let f = OpenOptions::new()
+        .truncate(true)
+        .write(true)
+        .create(true)
+        .open("output1.svg")
+        .unwrap();
+    metadata_tile(config, Meta::default(), val.into_iter(), f).unwrap();
 }
