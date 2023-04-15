@@ -4,24 +4,41 @@ use quick_xml::events::{BytesDecl, BytesText, Event};
 use quick_xml::{Error, Writer};
 use std::{io::Write, sync::Mutex};
 
+#[derive(Default, Clone)]
+pub enum Mode {
+    #[default]
+    RowColumn,
+    ColumnRow,
+}
+
 #[derive(Builder, Clone)]
 pub struct Config {
     #[default(0)]
+    #[public]
     offset_x: u32,
     #[default(0)]
+    #[public]
     offset_y: u32,
     #[default(15)]
+    #[public]
     size_x: u32,
     #[default(15)]
+    #[public]
     size_y: u32,
     #[default(5)]
     padding_x: u32,
     #[default(5)]
+    #[public]
     padding_y: u32,
     #[default(1)]
+    #[public]
     border: u32,
     #[default(3)]
+    #[public]
     rounding: u32,
+    #[default(Mode::RowColumn)]
+    #[public]
+    mode: Mode,
 }
 
 fn coordinate(base: u32, size: u32, padding: u32, offset: u32) -> u32 {
@@ -34,18 +51,30 @@ impl Config {
     fn size_y(&self) -> String {
         format!("{}", self.size_x)
     }
-    fn pos_x(&self, item: u32) -> String {
-        format!(
-            "{}",
-            coordinate(item, self.size_x, self.padding_x, self.offset_x)
-        )
+
+    fn positions(&self, first: u32, second: u32) -> (String, String) {
+        let (x, y) = match self.mode {
+            Mode::RowColumn => (second, first),
+            Mode::ColumnRow => (first, second),
+        };
+        let xc = coordinate(x, self.size_x, self.padding_x, self.offset_x);
+        let yc = coordinate(y, self.size_y, self.padding_y, self.offset_y);
+        let xs = format!("{}", xc);
+        let ys = format!("{}", yc);
+        (xs, ys)
     }
 
-    fn pos_y(&self, item: u32) -> String {
-        format!(
-            "{}",
-            coordinate(item, self.size_y, self.padding_y, self.offset_y)
-        )
+    fn set_metadata_first_offset(&mut self, item: u32) {
+        match self.mode {
+            Mode::RowColumn => self.offset_y += item,
+            Mode::ColumnRow => self.offset_x += item,
+        };
+    }
+    fn set_metadata_second_offset(&mut self, item: u32) {
+        match self.mode {
+            Mode::RowColumn => self.offset_x += item,
+            Mode::ColumnRow => self.offset_y += item,
+        };
     }
     fn border(&self) -> String {
         format!("{}", self.border)
@@ -103,11 +132,11 @@ where
     let ds = Mutex::new(Some((config, data_source, metadata)));
     base_doc(output, move |svg| {
         let (mut config, data_source, metadata) = ds.lock().unwrap().take().unwrap();
-        let left_size = metadata.left_size();
         let top_size = metadata.top_size();
+        let left_size = metadata.left_size();
         write_metadata(svg, &config, metadata)?;
-        config.offset_x += left_size;
-        config.offset_y += top_size;
+        config.set_metadata_first_offset(top_size);
+        config.set_metadata_second_offset(left_size);
         write_tile(svg, data_source, &config)
     })?;
     Ok(())
@@ -172,7 +201,7 @@ where
     if let Some(iter) = metadata.left() {
         let mut y = 0;
         let mut c = config.clone();
-        c.offset_y += top_size;
+        c.set_metadata_first_offset(top_size);
         for info in iter {
             let block = info.block_count() / 2;
             y += block;
@@ -184,7 +213,7 @@ where
     if let Some(iter) = metadata.top() {
         let mut x = 0;
         let mut c = config.clone();
-        c.offset_x += left_size;
+        c.set_metadata_second_offset(left_size);
         for info in iter {
             let block = info.block_count();
             write_text(svg, &c, x, 1, info.label())?;
@@ -206,9 +235,9 @@ where
     E: Element,
     W: Write,
 {
-    let mut y = 0;
+    let mut first = 0;
     for yval in data_source {
-        let mut x = 0;
+        let mut second = 0;
         for xval in yval {
             if let Some(l) = xval.get_link() {
                 svg.create_element("a")
@@ -217,15 +246,15 @@ where
                         ("xlink:title", l.title().as_str()),
                     ])
                     .write_inner_content(|svg| {
-                        write_rect(svg, &config, x, y, &xval)?;
+                        write_rect(svg, &config, first, second, &xval)?;
                         Ok(())
                     })?;
             } else {
-                write_rect(svg, &config, x, y, &xval)?;
+                write_rect(svg, &config, first, second, &xval)?;
             }
-            x += 1;
+            second += 1;
         }
-        y += 1;
+        first += 1;
     }
     Ok(())
 }
@@ -233,8 +262,8 @@ where
 fn write_rect<W: std::io::Write>(
     svg: &mut Writer<W>,
     config: &Config,
-    x: u32,
-    y: u32,
+    first: u32,
+    second: u32,
     ele: &impl Element,
 ) -> std::result::Result<(), Error> {
     let style = format!(
@@ -243,11 +272,12 @@ fn write_rect<W: std::io::Write>(
         config.border(),
         ele.get_border_color().to_hex_string()
     );
+    let (x, y) = config.positions(first, second);
 
     svg.create_element("rect")
         .with_attributes(vec![
-            ("x", config.pos_x(x).as_str()),
-            ("y", config.pos_y(y).as_str()),
+            ("x", x.as_str()),
+            ("y", y.as_str()),
             ("rx", config.rounding().as_str()),
             ("ry", config.rounding().as_str()),
             ("width", config.size_x().as_str()),
@@ -265,11 +295,9 @@ fn write_text<W: std::io::Write>(
     y: u32,
     val: &str,
 ) -> std::result::Result<(), Error> {
+    let (x, y) = config.positions(y, x);
     svg.create_element("text")
-        .with_attributes(vec![
-            ("x", config.pos_x(x).as_str()),
-            ("y", config.pos_y(y).as_str()),
-        ])
+        .with_attributes(vec![("x", x.as_str()), ("y", y.as_str())])
         .write_text_content(BytesText::new(val))?;
     Ok(())
 }
