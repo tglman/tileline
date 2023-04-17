@@ -1,4 +1,3 @@
-use std::fs::OpenOptions;
 use tileline::{metadata_tile, tile, Config, Element, ElementLink, Info, Metadata, Mode, Rgb};
 
 #[derive(Clone)]
@@ -39,11 +38,11 @@ struct Meta {}
 
 impl Metadata<std::vec::IntoIter<MetaInfo>, MetaInfo> for Meta {
     fn left_size(&self) -> u32 {
-        30
+        60
     }
 
     fn top_size(&self) -> u32 {
-        60
+        30
     }
 
     fn left(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
@@ -99,7 +98,8 @@ impl Info for MetaInfo {
     }
 }
 
-fn main() {
+#[test]
+fn test_simple() {
     let mut val = Vec::new();
     for i in 0..5 {
         let mut column = Vec::new();
@@ -108,21 +108,56 @@ fn main() {
         }
         val.push(column.into_iter());
     }
-    let config = Config::new().mode(Mode::RowColumn).build();
 
-    let f = OpenOptions::new()
-        .truncate(true)
-        .write(true)
-        .create(true)
-        .open("output.svg")
-        .unwrap();
-    tile(config.clone(), val.clone().into_iter(), f).unwrap();
+    let config = Config::new().build();
+    let mut out = Vec::new();
+    tile(config.clone(), val.clone().into_iter(), &mut out).unwrap();
+    assert_eq!(
+        out,
+        std::fs::read("./fixtures/simple.svg").unwrap().to_vec()
+    );
+}
 
-    let f = OpenOptions::new()
-        .truncate(true)
-        .write(true)
-        .create(true)
-        .open("output1.svg")
-        .unwrap();
-    metadata_tile(config, Meta::default(), val.into_iter(), f).unwrap();
+#[test]
+fn test_simple_column_row() {
+    let mut val = Vec::new();
+    for i in 0..5 {
+        let mut column = Vec::new();
+        for z in 0..30 {
+            column.push(Value::new(i * 10 + z * 10));
+        }
+        val.push(column.into_iter());
+    }
+
+    let config = Config::new().mode(Mode::ColumnRow).build();
+    let mut out = Vec::new();
+    tile(config.clone(), val.clone().into_iter(), &mut out).unwrap();
+    assert_eq!(
+        out,
+        std::fs::read("./fixtures/simple_column_row.svg")
+            .unwrap()
+            .to_vec()
+    );
+}
+
+#[test]
+fn test_metadata() {
+    let mut val = Vec::new();
+    for i in 0..5 {
+        let mut column = Vec::new();
+        for z in 0..30 {
+            column.push(Value::new(i * 10 + z * 10));
+        }
+        val.push(column.into_iter());
+    }
+
+    let config = Config::new().build();
+    let mut out = Vec::new();
+    metadata_tile(config, Meta::default(), val.into_iter(), &mut out).unwrap();
+    assert_eq!(
+        out,
+        std::fs::read("./fixtures/simple_metadata.svg")
+            .unwrap()
+            .to_vec()
+    );
 }
