@@ -1,5 +1,5 @@
 use std::fs::OpenOptions;
-use tileline::{metadata_tile, tile, Config, Element, ElementLink, Info, Metadata, Rgb};
+use tileline::{metadata_tile, tile, Config, Element, ElementLink, Info, Metadata, Mode, Rgb};
 
 #[derive(Clone)]
 struct Value {
@@ -39,19 +39,11 @@ struct Meta {}
 
 impl Metadata<std::vec::IntoIter<MetaInfo>, MetaInfo> for Meta {
     fn left_size(&self) -> u32 {
-        60
-    }
-
-    fn top_size(&self) -> u32 {
         30
     }
 
-    fn right_size(&self) -> u32 {
-        0
-    }
-
-    fn bottom_size(&self) -> u32 {
-        0
+    fn top_size(&self) -> u32 {
+        60
     }
 
     fn left(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
@@ -75,11 +67,23 @@ impl Metadata<std::vec::IntoIter<MetaInfo>, MetaInfo> for Meta {
     }
 
     fn right(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
-        None
+        Some(
+            (0..2)
+                .into_iter()
+                .map(|_| MetaInfo::default())
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
     }
 
     fn bottom(&self) -> Option<std::vec::IntoIter<MetaInfo>> {
-        None
+        Some(
+            (0..15)
+                .into_iter()
+                .map(|_| MetaInfo::default())
+                .collect::<Vec<_>>()
+                .into_iter(),
+        )
     }
 }
 
@@ -104,7 +108,7 @@ fn main() {
         }
         val.push(column.into_iter());
     }
-    let config = Config::new().build();
+    let config = Config::new().mode(Mode::RowColumn).build();
 
     let f = OpenOptions::new()
         .truncate(true)

@@ -52,13 +52,20 @@ impl Config {
         format!("{}", self.size_x)
     }
 
+    fn coordinate_x(&self, value: u32) -> u32 {
+        coordinate(value, self.size_x, self.padding_x, self.offset_x)
+    }
+
+    fn coordinate_y(&self, value: u32) -> u32 {
+        coordinate(value, self.size_y, self.padding_y, self.offset_y)
+    }
     fn positions(&self, first: u32, second: u32) -> (String, String) {
         let (x, y) = match self.mode {
             Mode::RowColumn => (second, first),
             Mode::ColumnRow => (first, second),
         };
-        let xc = coordinate(x, self.size_x, self.padding_x, self.offset_x);
-        let yc = coordinate(y, self.size_y, self.padding_y, self.offset_y);
+        let xc = self.coordinate_x(x);
+        let yc = self.coordinate_y(y);
         let xs = format!("{}", xc);
         let ys = format!("{}", yc);
         (xs, ys)
@@ -70,10 +77,23 @@ impl Config {
             Mode::ColumnRow => self.offset_x += item,
         };
     }
+
+    fn set_metadata_after_first_offset(&mut self, max_first: u32) {
+        match self.mode {
+            Mode::RowColumn => self.offset_y = self.coordinate_y(max_first),
+            Mode::ColumnRow => self.offset_x = self.coordinate_x(max_first),
+        };
+    }
     fn set_metadata_second_offset(&mut self, item: u32) {
         match self.mode {
             Mode::RowColumn => self.offset_x += item,
             Mode::ColumnRow => self.offset_y += item,
+        };
+    }
+    fn set_metadata_after_second_offset(&mut self, max_second: u32) {
+        match self.mode {
+            Mode::RowColumn => self.offset_x = self.coordinate_x(max_second),
+            Mode::ColumnRow => self.offset_y = self.coordinate_y(max_second),
         };
     }
     fn border(&self) -> String {
@@ -106,8 +126,8 @@ where
 {
     fn left_size(&self) -> u32;
     fn top_size(&self) -> u32;
-    fn right_size(&self) -> u32;
-    fn bottom_size(&self) -> u32;
+    //    fn right_size(&self) -> u32;
+    //    fn bottom_size(&self) -> u32;
     fn left(&self) -> Option<IT>;
     fn top(&self) -> Option<IT>;
     fn right(&self) -> Option<IT>;
@@ -134,10 +154,12 @@ where
         let (mut config, data_source, metadata) = ds.lock().unwrap().take().unwrap();
         let top_size = metadata.top_size();
         let left_size = metadata.left_size();
-        write_metadata(svg, &config, metadata)?;
+        write_metadata(svg, &config, &metadata)?;
         config.set_metadata_first_offset(top_size);
         config.set_metadata_second_offset(left_size);
-        write_tile(svg, data_source, &config)
+        let (max_first, max_second) = write_tile(svg, data_source, &config)?;
+        write_after_metadata(svg, &config, metadata, max_first, max_second)?;
+        Ok(())
     })?;
     Ok(())
 }
@@ -156,7 +178,8 @@ where
     let ds = Mutex::new(Some(data_source));
     base_doc(output, move |svg| {
         let data_source = ds.lock().unwrap().take().unwrap();
-        write_tile(svg, data_source, &config)
+        write_tile(svg, data_source, &config)?;
+        Ok(())
     })?;
     Ok(())
 }
@@ -185,10 +208,49 @@ where
     Ok(())
 }
 
-fn write_metadata<W, M, MIT, MIN>(
+fn write_after_metadata<W, M, MIT, MIN>(
     svg: &mut Writer<W>,
     config: &Config,
     metadata: M,
+    max_first: u32,
+    max_second: u32,
+) -> std::result::Result<(), Error>
+where
+    M: Metadata<MIT, MIN>,
+    MIT: Iterator<Item = MIN>,
+    MIN: Info,
+    W: Write,
+{
+    if let Some(iter) = metadata.right() {
+        let mut y = 0;
+        let mut c = config.clone();
+        c.set_metadata_after_second_offset(max_second);
+        for info in iter {
+            let block = info.block_count() / 2;
+            y += block;
+            write_text(svg, &c, 1, y, info.label())?;
+            y += block;
+        }
+    }
+
+    if let Some(iter) = metadata.bottom() {
+        let mut x = 0;
+        let mut c = config.clone();
+        c.set_metadata_after_first_offset(max_first);
+        for info in iter {
+            let block = info.block_count();
+            write_text(svg, &c, x, 1, info.label())?;
+            x += block;
+        }
+    }
+
+    Ok(())
+}
+
+fn write_metadata<W, M, MIT, MIN>(
+    svg: &mut Writer<W>,
+    config: &Config,
+    metadata: &M,
 ) -> std::result::Result<(), Error>
 where
     M: Metadata<MIT, MIN>,
@@ -228,13 +290,14 @@ fn write_tile<W, D, B, E>(
     svg: &mut Writer<W>,
     data_source: D,
     config: &Config,
-) -> std::result::Result<(), Error>
+) -> std::result::Result<(u32, u32), Error>
 where
     D: Iterator<Item = B>,
     B: Iterator<Item = E>,
     E: Element,
     W: Write,
 {
+    let mut max_second = 0;
     let mut first = 0;
     for yval in data_source {
         let mut second = 0;
@@ -253,10 +316,13 @@ where
                 write_rect(svg, &config, first, second, &xval)?;
             }
             second += 1;
+            if second > max_second {
+                max_second = second;
+            }
         }
         first += 1;
     }
-    Ok(())
+    Ok((first, max_second))
 }
 
 fn write_rect<W: std::io::Write>(
