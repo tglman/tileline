@@ -1,7 +1,11 @@
 use builder_pattern::Builder;
+#[cfg(feature = "year_line")]
+use chrono::{Datelike, NaiveDate};
 pub use colorsys::Rgb;
 use quick_xml::events::{BytesDecl, BytesText, Event};
 use quick_xml::{Error, Writer};
+#[cfg(feature = "year_line")]
+use std::rc::Rc;
 use std::{io::Write, sync::Mutex};
 
 #[derive(Default, Clone)]
@@ -365,5 +369,123 @@ fn write_text<W: std::io::Write>(
     svg.create_element("text")
         .with_attributes(vec![("x", x.as_str()), ("y", y.as_str())])
         .write_text_content(BytesText::new(val))?;
+    Ok(())
+}
+
+#[cfg(feature = "year_line")]
+pub trait DateDataSource<E: Element> {
+    fn get_element(&self, data: NaiveDate) -> E;
+}
+
+#[cfg(feature = "year_line")]
+struct Year<E: Element> {
+    date: Box<dyn Iterator<Item = NaiveDate>>,
+    data_source: Rc<dyn DateDataSource<E>>,
+}
+#[cfg(feature = "year_line")]
+impl<E: Element> Year<E> {
+    fn new(year: i32, data_source: Rc<dyn DateDataSource<E>>) -> Self {
+        Self {
+            date: Box::new(
+                NaiveDate::from_ymd_opt(year, 1, 1)
+                    .unwrap()
+                    .iter_weeks()
+                    .take_while(move |x| x.year() == year),
+            ),
+            data_source,
+        }
+    }
+}
+
+#[cfg(feature = "year_line")]
+impl<E: Element> Iterator for Year<E> {
+    type Item = Week<E>;
+    fn next(&mut self) -> Option<Self::Item> {
+        let ds = self.data_source.clone();
+        self.date.next().map(|w| Week::new(w, ds))
+    }
+}
+
+#[cfg(feature = "year_line")]
+struct Week<E: Element> {
+    date: Box<dyn Iterator<Item = NaiveDate>>,
+    data_source: Rc<dyn DateDataSource<E>>,
+    empty: u32,
+}
+#[cfg(feature = "year_line")]
+impl<E: Element> Week<E> {
+    fn new(date: NaiveDate, data_source: Rc<dyn DateDataSource<E>>) -> Self {
+        let week = date.iso_week().week();
+        let empty = date.weekday().number_from_monday();
+        Self {
+            date: Box::new(
+                date.iter_days()
+                    .take_while(move |d| d.iso_week().week() == week),
+            ),
+            empty,
+            data_source,
+        }
+    }
+}
+
+#[cfg(feature = "year_line")]
+impl<E: Element> Iterator for Week<E> {
+    type Item = WrapperElement<E>;
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.empty > 0 {
+            self.empty -= 1;
+            Some(WrapperElement::None)
+        } else {
+            let ds = self.data_source.clone();
+            self.date
+                .next()
+                .map(|d| WrapperElement::Real(ds.get_element(d)))
+        }
+    }
+}
+
+#[cfg(feature = "year_line")]
+enum WrapperElement<E> {
+    Real(E),
+    None,
+}
+#[cfg(feature = "year_line")]
+impl<E: Element> Element for WrapperElement<E> {
+    fn get_color(&self) -> Rgb {
+        match self {
+            Self::Real(e) => e.get_color(),
+            Self::None => Rgb::new(255.0, 255.0, 255.0, Some(255.0)),
+        }
+    }
+
+    fn get_border_color(&self) -> Rgb {
+        match self {
+            Self::Real(e) => e.get_border_color(),
+            Self::None => Rgb::new(255.0, 255.0, 255.0, Some(255.0)),
+        }
+    }
+
+    fn get_link(&self) -> Option<Box<dyn ElementLink>> {
+        match self {
+            Self::Real(e) => e.get_link(),
+            Self::None => None,
+        }
+    }
+}
+
+#[cfg(feature = "year_line")]
+pub fn year_line<W, D, B, E>(
+    year: i32,
+    data_source: D,
+    output: W,
+    mut config: Config,
+) -> std::result::Result<(), Box<dyn std::error::Error>>
+where
+    D: DateDataSource<E> + 'static,
+    E: Element,
+    W: Write,
+{
+    config.mode = Mode::ColumnRow;
+    tile(config, Year::new(year, Rc::new(data_source)), output)?;
     Ok(())
 }
