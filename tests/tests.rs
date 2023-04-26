@@ -161,3 +161,53 @@ fn test_metadata() {
             .to_vec()
     );
 }
+
+#[test]
+#[cfg(feature = "year_line")]
+fn test_year_line() {
+    use chrono::{Datelike, NaiveDate};
+    struct YearDatasource {}
+    struct DateElement {
+        color: Rgb,
+        date: NaiveDate,
+    }
+    impl Element for DateElement {
+        fn get_color(&self) -> Rgb {
+            self.color.clone()
+        }
+
+        fn get_border_color(&self) -> Rgb {
+            self.color.clone()
+        }
+
+        fn get_link(&self) -> Option<Box<dyn ElementLink>> {
+            Some(Box::new(ElementLinkImpl(
+                format!("{}", self.date),
+                "bbb".to_owned(),
+            )))
+        }
+    }
+    impl tileline::DateDataSource<DateElement> for YearDatasource {
+        fn get_element(&self, data: chrono::NaiveDate) -> DateElement {
+            if data.day() % 2 == 0 {
+                DateElement {
+                    color: Rgb::new(0.0, 0.0, 100.0, None),
+                    date: data.clone(),
+                }
+            } else {
+                DateElement {
+                    color: Rgb::new(0.0, 100.0, 0.0, None),
+                    date: data.clone(),
+                }
+            }
+        }
+    }
+
+    let config = Config::new().build();
+    let mut out = Vec::new();
+    tileline::year_line(2023, YearDatasource {}, &mut out, config).unwrap();
+    assert_eq!(
+        out,
+        std::fs::read("./fixtures/year_line.svg").unwrap().to_vec()
+    );
+}

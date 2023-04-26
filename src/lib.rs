@@ -231,7 +231,8 @@ where
         c.set_metadata_after_second_offset(max_second);
         for info in iter {
             let block = info.block_count() / 2;
-            y += block;
+            let add = info.block_count() % 2;
+            y += block + add;
             write_text(svg, &c, 1, y, info.label())?;
             y += block;
         }
@@ -242,7 +243,9 @@ where
         let mut c = config.clone();
         c.set_metadata_after_first_offset(max_first);
         for info in iter {
-            let block = info.block_count();
+            let block = info.block_count() / 2;
+            let add = info.block_count() % 2;
+            x += block + add;
             write_text(svg, &c, x, 1, info.label())?;
             x += block;
         }
@@ -270,7 +273,8 @@ where
         c.set_metadata_first_offset(top_size);
         for info in iter {
             let block = info.block_count() / 2;
-            y += block;
+            let add = info.block_count() % 2;
+            y += block + add;
             write_text(svg, &c, 1, y, info.label())?;
             y += block;
         }
@@ -281,7 +285,9 @@ where
         let mut c = config.clone();
         c.set_metadata_second_offset(left_size);
         for info in iter {
-            let block = info.block_count();
+            let block = info.block_count() / 2;
+            let add = info.block_count() % 2;
+            x += block + add;
             write_text(svg, &c, x, 1, info.label())?;
             x += block;
         }
@@ -381,6 +387,7 @@ pub trait DateDataSource<E: Element> {
 struct Year<E: Element> {
     date: Box<dyn Iterator<Item = NaiveDate>>,
     data_source: Rc<dyn DateDataSource<E>>,
+    year: i32,
 }
 #[cfg(feature = "year_line")]
 impl<E: Element> Year<E> {
@@ -393,6 +400,7 @@ impl<E: Element> Year<E> {
                     .take_while(move |x| x.year() == year),
             ),
             data_source,
+            year,
         }
     }
 }
@@ -402,7 +410,7 @@ impl<E: Element> Iterator for Year<E> {
     type Item = Week<E>;
     fn next(&mut self) -> Option<Self::Item> {
         let ds = self.data_source.clone();
-        self.date.next().map(|w| Week::new(w, ds))
+        self.date.next().map(|w| Week::new(w, self.year, ds))
     }
 }
 
@@ -414,14 +422,21 @@ struct Week<E: Element> {
 }
 #[cfg(feature = "year_line")]
 impl<E: Element> Week<E> {
-    fn new(date: NaiveDate, data_source: Rc<dyn DateDataSource<E>>) -> Self {
-        let week = date.iso_week().week();
-        let empty = date.weekday().number_from_monday();
+    fn new(date: NaiveDate, year: i32, data_source: Rc<dyn DateDataSource<E>>) -> Self {
+        let weekday = if date.iso_week().year() != year {
+            let rem = 7 - date.weekday().number_from_sunday();
+            date.checked_add_days(chrono::Days::new(rem as u64))
+                .unwrap()
+        } else {
+            date.checked_add_days(chrono::Days::new(7)).unwrap()
+        };
+        let empty = if date.iso_week().year() != year {
+            date.weekday().number_from_sunday()
+        } else {
+            0
+        };
         Self {
-            date: Box::new(
-                date.iter_days()
-                    .take_while(move |d| d.iso_week().week() == week),
-            ),
+            date: Box::new(date.iter_days().take_while(move |d| d != &weekday)),
             empty,
             data_source,
         }
@@ -474,7 +489,85 @@ impl<E: Element> Element for WrapperElement<E> {
 }
 
 #[cfg(feature = "year_line")]
-pub fn year_line<W, D, B, E>(
+struct YearMetadata {}
+#[cfg(feature = "year_line")]
+struct YearInfo {
+    block_count: u32,
+    label: String,
+}
+#[cfg(feature = "year_line")]
+impl YearInfo {
+    fn day(day: &str) -> Self {
+        Self {
+            block_count: 2,
+            label: day.to_owned(),
+        }
+    }
+
+    fn month(day: &str) -> Self {
+        Self {
+            block_count: 4,
+            label: day.to_owned(),
+        }
+    }
+}
+
+#[cfg(feature = "year_line")]
+impl Info for YearInfo {
+    fn block_count(&self) -> u32 {
+        self.block_count
+    }
+
+    fn label(&self) -> &str {
+        &self.label
+    }
+}
+
+#[cfg(feature = "year_line")]
+impl Metadata<std::vec::IntoIter<YearInfo>, YearInfo> for YearMetadata {
+    fn left_size(&self) -> u32 {
+        40
+    }
+
+    fn top_size(&self) -> u32 {
+        40
+    }
+
+    fn left(&self) -> Option<std::vec::IntoIter<YearInfo>> {
+        Some(
+            vec![
+                YearInfo::month("Jan"),
+                YearInfo::month("Feb"),
+                YearInfo::month("Mar"),
+                YearInfo::month("Apr"),
+                YearInfo::month("May"),
+                YearInfo::month("Jun"),
+                YearInfo::month("Jul"),
+                YearInfo::month("Aug"),
+                YearInfo::month("Sep"),
+                YearInfo::month("Oct"),
+                YearInfo::month("Nov"),
+                YearInfo::month("Dec"),
+            ]
+            .into_iter(),
+        )
+    }
+
+    fn top(&self) -> Option<std::vec::IntoIter<YearInfo>> {
+        Some(vec![YearInfo::day("S"), YearInfo::day("T"), YearInfo::day("S")].into_iter())
+    }
+
+    fn right(&self) -> Option<std::vec::IntoIter<YearInfo>> {
+        None
+    }
+
+    fn bottom(&self) -> Option<std::vec::IntoIter<YearInfo>> {
+        None
+    }
+}
+
+#[cfg(feature = "year_line")]
+pub fn year_line<W, D, E>(
     year: i32,
     data_source: D,
     output: W,
@@ -486,6 +579,12 @@ where
     W: Write,
 {
     config.mode = Mode::ColumnRow;
-    tile(config, Year::new(year, Rc::new(data_source)), output)?;
+    let metadata = YearMetadata {};
+    metadata_tile(
+        config,
+        metadata,
+        Year::new(year, Rc::new(data_source)),
+        output,
+    )?;
     Ok(())
 }
