@@ -1,9 +1,13 @@
 
-![Tileline](/logo.png "Tileline")
+![Tileline](/logo.png "Tileline")  
+
 
 Tileline is a simple library to generate SVG block graph that represents a set of events, it has API for generic
 block graphs, and a year block graph, with the ability to associate links to specific blocks.
 
+Here an example output:
+
+![Year Line](/year.png) 
 
 ## Status 
 
