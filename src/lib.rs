@@ -273,11 +273,8 @@ where
         let mut c = config.clone();
         c.set_metadata_first_offset(top_size);
         for info in iter {
-            let block = info.block_count() / 2;
-            let add = info.block_count() % 2;
-            y += block + add;
             write_text(svg, &c, 1, y, info.label())?;
-            y += block;
+            y += info.block_count();
         }
     }
 
@@ -286,11 +283,8 @@ where
         let mut c = config.clone();
         c.set_metadata_second_offset(left_size);
         for info in iter {
-            let block = info.block_count() / 2;
-            let add = info.block_count() % 2;
-            x += block + add;
             write_text(svg, &c, x, 1, info.label())?;
-            x += block;
+            x += info.block_count();
         }
     }
 
@@ -374,7 +368,11 @@ fn write_text<W: std::io::Write>(
 ) -> std::result::Result<(), Error> {
     let (x, y) = config.positions(y, x);
     svg.create_element("text")
-        .with_attributes(vec![("x", x.as_str()), ("y", y.as_str())])
+        .with_attributes(vec![
+            ("x", x.as_str()),
+            ("y", y.as_str()),
+            ("dominant-baseline", "hanging"),
+        ])
         .write_text_content(BytesText::new(val))?;
     Ok(())
 }

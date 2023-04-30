@@ -111,17 +111,10 @@ struct YearInfo {
     label: String,
 }
 impl YearInfo {
-    fn day(day: &str) -> Self {
+    fn new(label: &str, size: u32) -> Self {
         Self {
-            block_count: 2,
-            label: day.to_owned(),
-        }
-    }
-
-    fn month(day: &str) -> Self {
-        Self {
-            block_count: 4,
-            label: day.to_owned(),
+            block_count: size,
+            label: label.to_owned(),
         }
     }
 }
@@ -148,25 +141,32 @@ impl Metadata<std::vec::IntoIter<YearInfo>, YearInfo> for YearMetadata {
     fn left(&self) -> Option<std::vec::IntoIter<YearInfo>> {
         Some(
             vec![
-                YearInfo::month("Jan"),
-                YearInfo::month("Feb"),
-                YearInfo::month("Mar"),
-                YearInfo::month("Apr"),
-                YearInfo::month("May"),
-                YearInfo::month("Jun"),
-                YearInfo::month("Jul"),
-                YearInfo::month("Aug"),
-                YearInfo::month("Sep"),
-                YearInfo::month("Oct"),
-                YearInfo::month("Nov"),
-                YearInfo::month("Dec"),
+                YearInfo::new("Jan", 5),
+                YearInfo::new("Feb", 4),
+                YearInfo::new("Mar", 5),
+                YearInfo::new("Apr", 4),
+                YearInfo::new("May", 5),
+                YearInfo::new("Jun", 4),
+                YearInfo::new("Jul", 4),
+                YearInfo::new("Aug", 5),
+                YearInfo::new("Sep", 4),
+                YearInfo::new("Oct", 5),
+                YearInfo::new("Nov", 4),
+                YearInfo::new("Dec", 5),
             ]
             .into_iter(),
         )
     }
 
     fn top(&self) -> Option<std::vec::IntoIter<YearInfo>> {
-        Some(vec![YearInfo::day("S"), YearInfo::day("T"), YearInfo::day("S")].into_iter())
+        Some(
+            vec![
+                YearInfo::new("S", 3),
+                YearInfo::new("T", 3),
+                YearInfo::new("S", 1),
+            ]
+            .into_iter(),
+        )
     }
 
     fn right(&self) -> Option<std::vec::IntoIter<YearInfo>> {
