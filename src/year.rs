@@ -1,8 +1,8 @@
+use crate::{metadata_tile, Config, Element, ElementLink, Info, Metadata, Mode};
 use chrono::{Datelike, NaiveDate};
-use std::rc::Rc;
 use colorsys::Rgb;
-use crate::{Element, Mode, ElementLink, Info, Metadata, Config, metadata_tile};
 use std::io::Write;
+use std::rc::Rc;
 
 pub trait DateDataSource<E: Element> {
     fn get_element(&self, data: NaiveDate) -> E;

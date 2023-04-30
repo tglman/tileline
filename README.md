@@ -21,13 +21,13 @@ block graphs, and a year block graph, with the ability to associate links to spe
 
 Just add it as dependency in your project toml.
 
-```
-tileline= "0.1.0"
+```toml
+tileline = "0.1.0"
 ```
 
 With additional year block graph
 
-```
+```toml
 tileline = {version="0.1.0", features=["year_line"]} 
 ```
 
@@ -36,12 +36,12 @@ tileline = {version="0.1.0", features=["year_line"]}
 Being a rust project just make sure to have your rust compiler setup and then:
 
 Base build:
-```
+```sh
 cargo build --all-features
 ```
 
 Run Tests:
-```
+```sh
 cargo test --all-features
 ```
 

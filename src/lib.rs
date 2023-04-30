@@ -378,4 +378,3 @@ fn write_text<W: std::io::Write>(
         .write_text_content(BytesText::new(val))?;
     Ok(())
 }
-
