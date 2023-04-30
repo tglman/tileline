@@ -7,6 +7,8 @@ use std::{io::Write, sync::Mutex};
 #[cfg(feature = "year_line")]
 mod year;
 #[cfg(feature = "year_line")]
+pub use chrono::{Datelike, NaiveDate};
+#[cfg(feature = "year_line")]
 pub use year::{year_line, DateDataSource};
 
 #[derive(Default, Clone)]

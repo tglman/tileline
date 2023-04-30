@@ -18,3 +18,8 @@ chrono = {version = "0.4.24" , optional =true}
 
 [features]
 year_line=["dep:chrono"]
+
+[[example]]
+name = "rainbow_year"
+required-features = ["year_line"]
+crate-type=["bin"]
