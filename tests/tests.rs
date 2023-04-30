@@ -38,11 +38,11 @@ struct Meta {}
 
 impl Metadata<std::vec::IntoIter<MetaInfo>, MetaInfo> for Meta {
     fn left_size(&self) -> u32 {
-        60
+        30
     }
 
     fn top_size(&self) -> u32 {
-        30
+        20
     }
 
     fn left(&self) -> Option<std::vec::IntoIter<MetaInfo>> {

@@ -233,10 +233,8 @@ where
         let mut c = config.clone();
         c.set_metadata_after_second_offset(max_second);
         for info in iter {
-            let block = info.block_count() / 2;
-            let add = info.block_count() % 2;
-            y += block + add;
-            write_text(svg, &c, 1, y, info.label())?;
+            let block = info.block_count();
+            write_text(svg, &c, 0, y, info.label())?;
             y += block;
         }
     }
@@ -246,10 +244,8 @@ where
         let mut c = config.clone();
         c.set_metadata_after_first_offset(max_first);
         for info in iter {
-            let block = info.block_count() / 2;
-            let add = info.block_count() % 2;
-            x += block + add;
-            write_text(svg, &c, x, 1, info.label())?;
+            let block = info.block_count();
+            write_text(svg, &c, x, 0, info.label())?;
             x += block;
         }
     }
@@ -275,7 +271,7 @@ where
         let mut c = config.clone();
         c.set_metadata_first_offset(top_size);
         for info in iter {
-            write_text(svg, &c, 1, y, info.label())?;
+            write_text(svg, &c, 0, y, info.label())?;
             y += info.block_count();
         }
     }
@@ -285,7 +281,7 @@ where
         let mut c = config.clone();
         c.set_metadata_second_offset(left_size);
         for info in iter {
-            write_text(svg, &c, x, 1, info.label())?;
+            write_text(svg, &c, x, 0, info.label())?;
             x += info.block_count();
         }
     }

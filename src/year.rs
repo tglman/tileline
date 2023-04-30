@@ -131,11 +131,11 @@ impl Info for YearInfo {
 
 impl Metadata<std::vec::IntoIter<YearInfo>, YearInfo> for YearMetadata {
     fn left_size(&self) -> u32 {
-        40
+        20
     }
 
     fn top_size(&self) -> u32 {
-        40
+        20
     }
 
     fn left(&self) -> Option<std::vec::IntoIter<YearInfo>> {
