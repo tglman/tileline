@@ -1,0 +1,9 @@
+
+site:
+  title: Tileline
+  description: Tileline Website
+  base_url: https://tileline.tglman.org
+  sitemap: sitemap.xml
+posts:
+  rss: rss.xml
+  
