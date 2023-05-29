@@ -9,6 +9,10 @@ documentation = "https://docs.rs/tileline/"
 readme = "README.md"
 exclude = ["site"]
 
+[badges]
+github = { repository = "tglman/tileline", branch = "master" }
+
+
 [dependencies]
 quick-xml="0.28"
 colorsys = "0.6.7"
