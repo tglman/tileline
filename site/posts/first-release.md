@@ -7,7 +7,7 @@ published_date: 2023-05-02 21:00:00.0 +0001
 Tileline is a small project that I started in my free time (of free time), because I want to have a simple block(tile) visualization, that could have 
 been fed with some arbitrary data.   
 
-My final scope was to create something that would produce year tile lines fed with from external sources like source code management, website events, 
+My final scope was to create something that would produce year tile lines fed from external sources like source code management, website events, 
 and what ever I could come up with, for build personal static blog/websites.   
 
 So this is the first independent crate that goes in that direction.  
@@ -16,10 +16,10 @@ Not having much time to build this project myself, I'm doing a "early" open sour
 this to me feel like a good hobby project to help on and build something on top, and I hope other people are of the same opinion.
 
 Even I do not have to much time to focus on this, I'm more than happy to do review of PR, publish releases, accept new random features,
-code, documentation, website or what ever contribution come in.
+code, documentation, website, or what ever contribution come in.
 
 
-Now that you know why, let's see what this do, this as today has 3 APIs, `tile`, `metadata_tile` and `year_tile`, that in the details they do:
+Now that you know why, let's see what this do, today tileline has 3 APIs, `tile`, `metadata_tile` and `year_tile`:
 
 - `tile` is a generic block visualization that receive an iterator of iterators that provide the data and create a block visualization, the data
 consist in the "cell color", "border color", "Optional Link Label" and "Optional Link Destination"
@@ -45,4 +45,7 @@ metadata_tile:
 year_tile:
 
 ![year_tile](/images/year_tile.png)  
+
+To see some example code just checkout the [examples](https://github.com/tglman/tileline/tree/master/examples) or the [tests](https://github.com/tglman/tileline/blob/master/tests/tests.rs)
+
 
