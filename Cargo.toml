@@ -3,9 +3,13 @@ name = "tileline"
 version = "0.1.0"
 edition = "2021"
 authors = ["Tglman <tglman@tglman.com>"]
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 description= "Simple library to generate SVG block graph"
 documentation = "https://docs.rs/tileline/"
+repository = "https://github.com/tglman/tileline"
+homepage = "https://tileline.tglman.org"
+keywords = ["svg", "events", "tileline"]
+category = ["visualization"]
 readme = "README.md"
 exclude = ["site"]
 
