@@ -1,20 +1,14 @@
-// -------------- THEME SWITCHER -------------- //
-@mixin dark-appearance {
-  filter: invert(1);
-  img {
-    filter: invert(1);
-
-    &.invertable { filter: invert(0); }
-  }
-}
-
-body[theme="dark"] { @include dark-appearance; }
-
 
 @media (prefers-color-scheme: dark) {
-  body[theme="auto"] { @include dark-appearance; }
+  body { 
+      filter: invert(1);
+      img {
+        filter: invert(1);
+
+        &.invertable { filter: invert(0); }
+      }
+  }
 }
-// -------------------------------------------- //
 
 // bg color is also needed in html in order to
 // block body's background propagation
