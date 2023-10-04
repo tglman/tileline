@@ -189,7 +189,7 @@ where
     E: Element,
     W: Write,
 {
-    config.mode = Mode::ColumnRow;
+    config.set_mode(Mode::ColumnRow);
     let metadata = YearMetadata {};
     metadata_tile(
         config,

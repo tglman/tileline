@@ -1,4 +1,4 @@
-use crate::{Config, Element};
+use crate::{Config, Element, Info, Metadata};
 use quick_xml::{
     events::{BytesDecl, BytesText, Event},
     Error, Writer,
@@ -73,5 +73,118 @@ pub(crate) fn write_text<W: std::io::Write>(
             ("dominant-baseline", "hanging"),
         ])
         .write_text_content(BytesText::new(val))?;
+    Ok(())
+}
+
+pub(crate) fn write_metadata<W, M, MIT, MIN>(
+    svg: &mut Writer<W>,
+    config: &Config,
+    metadata: &M,
+) -> std::result::Result<(), Error>
+where
+    M: Metadata<MIT, MIN>,
+    MIT: Iterator<Item = MIN>,
+    MIN: Info,
+    W: Write,
+{
+    let top_size = metadata.top_size();
+    let left_size = metadata.left_size();
+    if let Some(iter) = metadata.left() {
+        let mut y = 0;
+        let mut c = config.clone();
+        c.set_metadata_first_offset(top_size);
+        for info in iter {
+            write_text(svg, &c, 0, y, info.label())?;
+            y += info.block_count();
+        }
+    }
+
+    if let Some(iter) = metadata.top() {
+        let mut x = 0;
+        let mut c = config.clone();
+        c.set_metadata_second_offset(left_size);
+        for info in iter {
+            write_text(svg, &c, x, 0, info.label())?;
+            x += info.block_count();
+        }
+    }
+
+    Ok(())
+}
+
+pub(crate) fn write_tile<W, D, B, E>(
+    svg: &mut Writer<W>,
+    data_source: D,
+    config: &Config,
+) -> std::result::Result<(u32, u32), Error>
+where
+    D: Iterator<Item = B>,
+    B: Iterator<Item = E>,
+    E: Element,
+    W: Write,
+{
+    let mut max_second = 0;
+    let mut first = 0;
+    for yval in data_source {
+        let mut second = 0;
+        for xval in yval {
+            if let Some(l) = xval.get_link() {
+                svg.create_element("a")
+                    .with_attributes(vec![
+                        ("xlink:href", l.link().as_str()),
+                        ("xlink:title", l.title().as_str()),
+                    ])
+                    .write_inner_content(|svg| {
+                        write_rect(svg, &config, first, second, &xval)?;
+                        Ok(())
+                    })?;
+            } else {
+                write_rect(svg, &config, first, second, &xval)?;
+            }
+            second += 1;
+            if second > max_second {
+                max_second = second;
+            }
+        }
+        first += 1;
+    }
+    Ok((first, max_second))
+}
+
+pub(crate) fn write_after_metadata<W, M, MIT, MIN>(
+    svg: &mut Writer<W>,
+    config: &Config,
+    metadata: M,
+    max_first: u32,
+    max_second: u32,
+) -> std::result::Result<(), Error>
+where
+    M: Metadata<MIT, MIN>,
+    MIT: Iterator<Item = MIN>,
+    MIN: Info,
+    W: Write,
+{
+    if let Some(iter) = metadata.right() {
+        let mut y = 0;
+        let mut c = config.clone();
+        c.set_metadata_after_second_offset(max_second);
+        for info in iter {
+            let block = info.block_count();
+            write_text(svg, &c, 0, y, info.label())?;
+            y += block;
+        }
+    }
+
+    if let Some(iter) = metadata.bottom() {
+        let mut x = 0;
+        let mut c = config.clone();
+        c.set_metadata_after_first_offset(max_first);
+        for info in iter {
+            let block = info.block_count();
+            write_text(svg, &c, x, 0, info.label())?;
+            x += block;
+        }
+    }
+
     Ok(())
 }
