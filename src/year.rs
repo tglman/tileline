@@ -45,8 +45,7 @@ impl<E: Element> Week<E> {
     fn new(date: NaiveDate, year: i32, data_source: Rc<dyn DateDataSource<E>>) -> Self {
         let weekday = if date.iso_week().year() != year {
             let rem = 7 - date.weekday().number_from_sunday();
-            date.checked_add_days(chrono::Days::new(rem as u64))
-                .unwrap()
+            date.checked_add_days(chrono::Days::new(rem as u64)).unwrap()
         } else {
             date.checked_add_days(chrono::Days::new(7)).unwrap()
         };
@@ -71,9 +70,7 @@ impl<E: Element> Iterator for Week<E> {
             Some(WrapperElement::None)
         } else {
             let ds = self.data_source.clone();
-            self.date
-                .next()
-                .map(|d| WrapperElement::Real(ds.get_element(d)))
+            self.date.next().map(|d| WrapperElement::Real(ds.get_element(d)))
         }
     }
 }
@@ -159,14 +156,7 @@ impl Metadata<std::vec::IntoIter<YearInfo>, YearInfo> for YearMetadata {
     }
 
     fn top(&self) -> Option<std::vec::IntoIter<YearInfo>> {
-        Some(
-            vec![
-                YearInfo::new("S", 3),
-                YearInfo::new("T", 3),
-                YearInfo::new("S", 1),
-            ]
-            .into_iter(),
-        )
+        Some(vec![YearInfo::new("S", 3), YearInfo::new("T", 3), YearInfo::new("S", 1)].into_iter())
     }
 
     fn right(&self) -> Option<std::vec::IntoIter<YearInfo>> {
@@ -191,11 +181,6 @@ where
 {
     config.set_mode(Mode::ColumnRow);
     let metadata = YearMetadata {};
-    metadata_tile(
-        config,
-        metadata,
-        Year::new(year, Rc::new(data_source)),
-        output,
-    )?;
+    metadata_tile(config, metadata, Year::new(year, Rc::new(data_source)), output)?;
     Ok(())
 }

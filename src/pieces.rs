@@ -11,12 +11,10 @@ where
     W: Write,
 {
     let mut svg = Writer::new(output);
-    svg.write_event(Event::Decl(BytesDecl::new(
-        "1.0",
-        Some("UTF-8"),
-        Some("no"),
+    svg.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), Some("no"))))?;
+    svg.write_event(Event::DocType(BytesText::from_escaped(
+        r#"svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd""#,
     )))?;
-    svg.write_event(Event::DocType(BytesText::from_escaped(r#"svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd""#)))?;
 
     svg.create_element("svg")
         .with_attributes(vec![

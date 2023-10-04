@@ -112,10 +112,7 @@ fn test_simple() {
     let config = Config::new().build();
     let mut out = Vec::new();
     tile(config.clone(), val.clone().into_iter(), &mut out).unwrap();
-    assert_eq!(
-        out,
-        std::fs::read("./fixtures/simple.svg").unwrap().to_vec()
-    );
+    assert_eq!(out, std::fs::read("./fixtures/simple.svg").unwrap().to_vec());
 }
 
 #[test]
@@ -132,12 +129,7 @@ fn test_simple_column_row() {
     let config = Config::new().mode(Mode::ColumnRow).build();
     let mut out = Vec::new();
     tile(config.clone(), val.clone().into_iter(), &mut out).unwrap();
-    assert_eq!(
-        out,
-        std::fs::read("./fixtures/simple_column_row.svg")
-            .unwrap()
-            .to_vec()
-    );
+    assert_eq!(out, std::fs::read("./fixtures/simple_column_row.svg").unwrap().to_vec());
 }
 
 #[test]
@@ -154,12 +146,7 @@ fn test_metadata() {
     let config = Config::new().build();
     let mut out = Vec::new();
     metadata_tile(config, Meta::default(), val.into_iter(), &mut out).unwrap();
-    assert_eq!(
-        out,
-        std::fs::read("./fixtures/simple_metadata.svg")
-            .unwrap()
-            .to_vec()
-    );
+    assert_eq!(out, std::fs::read("./fixtures/simple_metadata.svg").unwrap().to_vec());
 }
 
 #[test]
@@ -181,10 +168,7 @@ fn test_year_line() {
         }
 
         fn get_link(&self) -> Option<Box<dyn ElementLink>> {
-            Some(Box::new(ElementLinkImpl(
-                format!("{}", self.date),
-                "bbb".to_owned(),
-            )))
+            Some(Box::new(ElementLinkImpl(format!("{}", self.date), "bbb".to_owned())))
         }
     }
     impl tileline::DateDataSource<DateElement> for YearDatasource {
@@ -206,8 +190,5 @@ fn test_year_line() {
     let config = Config::new().build();
     let mut out = Vec::new();
     tileline::year_line(2023, YearDatasource {}, &mut out, config).unwrap();
-    assert_eq!(
-        out,
-        std::fs::read("./fixtures/year_line.svg").unwrap().to_vec()
-    );
+    assert_eq!(out, std::fs::read("./fixtures/year_line.svg").unwrap().to_vec());
 }

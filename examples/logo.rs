@@ -4,14 +4,8 @@ use tileline::{tile, Config, Element, ElementLink, Rgb};
 struct Value(Rgb, Rgb);
 
 impl Value {
-    fn new(
-        background: &str,
-        border: &str,
-    ) -> std::result::Result<Self, Box<dyn std::error::Error>> {
-        Ok(Self(
-            Rgb::from_hex_str(background)?,
-            Rgb::from_hex_str(border)?,
-        ))
+    fn new(background: &str, border: &str) -> std::result::Result<Self, Box<dyn std::error::Error>> {
+        Ok(Self(Rgb::from_hex_str(background)?, Rgb::from_hex_str(border)?))
     }
 }
 
