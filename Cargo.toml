@@ -18,7 +18,7 @@ github = { repository = "tglman/tileline", branch = "master" }
 
 
 [dependencies]
-quick-xml="0.29"
+quick-xml="0.30"
 colorsys = "0.6.7"
 builder-pattern= "0.4"
 chrono = {version = "0.4.24" , optional =true}
