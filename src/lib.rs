@@ -1,9 +1,8 @@
+use crate::pieces::{base_doc, write_rect, write_text};
 use builder_pattern::Builder;
 pub use colorsys::Rgb;
 use quick_xml::{Error, Writer};
 use std::{io::Write, sync::Mutex};
-use crate::pieces::{write_text, write_rect, base_doc};
-
 
 mod pieces;
 #[cfg(feature = "year_line")]
@@ -118,6 +117,7 @@ pub trait Element {
     fn get_border_color(&self) -> Rgb;
     fn get_link(&self) -> Option<Box<dyn ElementLink>>;
 }
+
 pub trait ElementLink {
     fn link(&self) -> String;
     fn title(&self) -> String;
@@ -304,5 +304,33 @@ where
         first += 1;
     }
     Ok((first, max_second))
+}
+
+impl Element for (Rgb, Rgb, Option<(String, String)>) {
+    fn get_color(&self) -> Rgb {
+        self.0.clone()
+    }
+
+    fn get_border_color(&self) -> Rgb {
+        self.1.clone()
+    }
+
+    fn get_link(&self) -> Option<Box<dyn ElementLink>> {
+        if let Some(s) = &self.2 {
+            Some(Box::new(s.clone()))
+        } else {
+            None
+        }
+    }
+}
+
+impl ElementLink for (String, String) {
+    fn link(&self) -> String {
+        self.1.clone()
+    }
+
+    fn title(&self) -> String {
+        self.0.clone()
+    }
 }
 

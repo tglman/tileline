@@ -1,7 +1,9 @@
-use quick_xml::{Error, Writer, events::{BytesText, Event, BytesDecl} };
 use crate::{Config, Element};
+use quick_xml::{
+    events::{BytesDecl, BytesText, Event},
+    Error, Writer,
+};
 use std::io::Write;
-
 
 pub(crate) fn base_doc<F, W>(output: W, f: F) -> std::result::Result<(), Box<dyn std::error::Error>>
 where
@@ -26,8 +28,6 @@ where
         .write_inner_content(f)?;
     Ok(())
 }
-
-
 
 pub(crate) fn write_rect<W: std::io::Write>(
     svg: &mut Writer<W>,
