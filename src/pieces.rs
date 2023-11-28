@@ -132,7 +132,7 @@ where
                         ("xlink:href", l.link().as_str()),
                         ("xlink:title", l.title().as_str()),
                     ])
-                    .write_inner_content(|svg| {
+                    .write_inner_content::<_, quick_xml::Error>(|svg| {
                         write_rect(svg, &config, first, second, &xval)?;
                         Ok(())
                     })?;
